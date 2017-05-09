@@ -7,7 +7,7 @@ from sklearn.cross_validation import StratifiedKFold
 
 from load import create_train_test_sets
 from scipy.io import savemat
-from persistent_homology import persistent_homology
+from persistent_homology import persistent_homology, persistent_homology_parallel
 
 
 if __name__ == '__main__':
@@ -23,6 +23,7 @@ if __name__ == '__main__':
     label = 4  # the label of interest is 4, i.e. "happy"
     cv = 10  # folds for cross-validation
     betti_number = 0
+    bins = 20
 
     print("Loading data of subject %d." % subject)
     X_train, y_train, X_test = create_train_test_sets(subject=subject,
@@ -39,8 +40,12 @@ if __name__ == '__main__':
     cov_train = cov_all[:X_train.shape[0], :, :]
     cov_test = cov_all[X_train.shape[0]:, :, :]
 
-    ph_train = persistent_homology(cov_train, order=betti_number)
-    ph_test = persistent_homology(cov_test, order=betti_number)
+    print("Computing persistent homology of covariance matrices on the train set.")
+    ph, features = persistent_homology_parallel(cov_train, order_max=betti_number, bins=bins)
+    ph_train = np.array([f[0][3] for f in features])
+    print("Computing persistent homology of covariance matrices on the test set.")
+    ph, features = persistent_homology_parallel(cov_test, order_max=betti_number, bins=bins)
+    ph_test = np.array([f[0][3] for f in features])
 
     print("Cross validated %s:" % scoring)
     clf = LogisticRegressionCV()

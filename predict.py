@@ -10,6 +10,20 @@ from scipy.io import savemat
 from persistent_homology import persistent_homology, persistent_homology_parallel
 
 
+def ph_dataset(covs, order_max=0, bins=10):
+    ph, features = persistent_homology_parallel(covs, order_max=order_max, bins=bins)
+    ph_vectors = np.array([np.concatenate(f[0][1:]) for f in features])
+    if order_max > 0:
+        ph_vectors1 = np.array([np.concatenate(f[1][1:]) for f in features])
+        ph_vectors = np.hstack([ph_vectors, ph_vectors1])
+
+    print("ph_vectors" + str(ph_vectors.shape))
+    idx_nonzero = (ph_vectors.std(0) != 0)
+    ph_vectors = ph_vectors[:, idx_nonzero]
+    print("ph_vectors" + str(ph_vectors.shape))
+    return ph_vectors
+
+
 if __name__ == '__main__':
     print("Biomag2016: Competition 3")
     print("Our attempt uses pyRiemann with a sklearn classifier.")
@@ -22,9 +36,9 @@ if __name__ == '__main__':
     scoring = 'roc_auc'  # scoring metric
     label = 4  # the label of interest is 4, i.e. "happy"
     cv = 10  # folds for cross-validation
-    order_max = 0
+    order_max = 1
     bins = 10
-    betti_number = 0
+    # betti_number = 0
     test_set = False
 
     print("Loading data of subject %d." % subject)
@@ -47,19 +61,11 @@ if __name__ == '__main__':
     cov_test = cov_all[X_train.shape[0]:, :, :]
 
     print("Computing persistent homology of covariance matrices on the train set.")
-    ph, features = persistent_homology_parallel(cov_train, order_max=order_max, bins=bins)
-    ph_train = np.array([np.concatenate(f[betti_number][1:]) for f in features])
-    print("ph_train" + str(ph_train.shape))
-    idx_nonzero = (ph_train.std(0) != 0)
-    ph_train = ph_train[:, idx_nonzero]
-    print("ph_train" + str(ph_train.shape))
+    ph_train = ph_dataset(cov_train, order_max=order_max, bins=bins)
+
     if test_set:
         print("Computing persistent homology of covariance matrices on the test set.")
-        ph, features = persistent_homology_parallel(cov_test, order_max=order_max, bins=bins)
-        ph_test = np.array([np.concatenate(f[betti_number][1:]) for f in features])
-        print("ph_test" + str(ph_test.shape))
-        ph_test = ph_test[:, idx_nonzero]
-        print("ph_test" + str(ph_test.shape))
+        ph_test = ph_dataset(cov_test, order_max=order_max, bins=bins)
 
     print("Cross validated %s:" % scoring)
     clf = LogisticRegressionCV()

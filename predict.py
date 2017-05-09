@@ -22,8 +22,10 @@ if __name__ == '__main__':
     scoring = 'roc_auc'  # scoring metric
     label = 4  # the label of interest is 4, i.e. "happy"
     cv = 10  # folds for cross-validation
-    betti_number = 0
+    order_max = 0
     bins = 20
+    betti_number = 0
+    test_set = False
 
     print("Loading data of subject %d." % subject)
     X_train, y_train, X_test = create_train_test_sets(subject=subject,
@@ -41,11 +43,19 @@ if __name__ == '__main__':
     cov_test = cov_all[X_train.shape[0]:, :, :]
 
     print("Computing persistent homology of covariance matrices on the train set.")
-    ph, features = persistent_homology_parallel(cov_train, order_max=betti_number, bins=bins)
-    ph_train = np.array([f[0][3] for f in features])
-    print("Computing persistent homology of covariance matrices on the test set.")
-    ph, features = persistent_homology_parallel(cov_test, order_max=betti_number, bins=bins)
-    ph_test = np.array([f[0][3] for f in features])
+    ph, features = persistent_homology_parallel(cov_train, order_max=order_max, bins=bins)
+    ph_train = np.array([np.concatenate(f[betti_number][1:]) for f in features])
+    print("ph_train" + str(ph_train.shape))
+    # idx_nonzero = (ph_train.std(0) != 0)
+    # ph_train = ph_train[:, idx_nonzero]
+    # print("ph_train" + str(ph_train.shape))
+    if test_set:
+        print("Computing persistent homology of covariance matrices on the test set.")
+        ph, features = persistent_homology_parallel(cov_test, order_max=order_max, bins=bins)
+        ph_test = np.array([np.concatenate(f[betti_number][1:]) for f in features])
+        print("ph_test" + str(ph_test.shape))
+        # ph_test = ph_test[:, idx_nonzero]
+        # print("ph_test" + str(ph_test.shape))
 
     print("Cross validated %s:" % scoring)
     clf = LogisticRegressionCV()
@@ -55,15 +65,16 @@ if __name__ == '__main__':
                             cv=cv, n_jobs=-1)
     print("Label %d, %s = %f" % (label, scoring, score.mean()))
 
-    print("")
-    print("Training on training data.")
-    clf = LogisticRegressionCV()
-    clf.fit(ph_train, y_train)
-    print("Predicting test data.")
-    y_test = clf.predict_proba(ph_test)
-    filename = 'subject%d.mat' % subject
-    print("Saving predictions to %s" % filename)
-    savemat(file_name=filename,
-            mdict={'predicted_probability': y_test[:, 1]})
+    if test_set:
+        print("")
+        print("Training on training data.")
+        clf = LogisticRegressionCV()
+        clf.fit(ph_train, y_train)
+        print("Predicting test data.")
+        y_test = clf.predict_proba(ph_test)
+        filename = 'subject%d.mat' % subject
+        print("Saving predictions to %s" % filename)
+        savemat(file_name=filename,
+                mdict={'predicted_probability': y_test[:, 1]})
 
 

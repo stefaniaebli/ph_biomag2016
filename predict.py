@@ -23,7 +23,7 @@ if __name__ == '__main__':
     label = 4  # the label of interest is 4, i.e. "happy"
     cv = 10  # folds for cross-validation
     order_max = 0
-    bins = 20
+    bins = 10
     betti_number = 0
     test_set = False
 
@@ -38,6 +38,10 @@ if __name__ == '__main__':
     print("Estimating covariance matrices with covariance estimator '%s'."
           % estimator)
     cov_all = Covariances(estimator=estimator).fit_transform(X_all)
+    # cov_all = cov_all * cov_all
+    cov_all = np.abs(cov_all)
+    # cov_all = (cov_all - np.min(cov_all))
+    cov_all = cov_all/ np.median(cov_all)
 
     cov_train = cov_all[:X_train.shape[0], :, :]
     cov_test = cov_all[X_train.shape[0]:, :, :]
@@ -46,16 +50,16 @@ if __name__ == '__main__':
     ph, features = persistent_homology_parallel(cov_train, order_max=order_max, bins=bins)
     ph_train = np.array([np.concatenate(f[betti_number][1:]) for f in features])
     print("ph_train" + str(ph_train.shape))
-    # idx_nonzero = (ph_train.std(0) != 0)
-    # ph_train = ph_train[:, idx_nonzero]
-    # print("ph_train" + str(ph_train.shape))
+    idx_nonzero = (ph_train.std(0) != 0)
+    ph_train = ph_train[:, idx_nonzero]
+    print("ph_train" + str(ph_train.shape))
     if test_set:
         print("Computing persistent homology of covariance matrices on the test set.")
         ph, features = persistent_homology_parallel(cov_test, order_max=order_max, bins=bins)
         ph_test = np.array([np.concatenate(f[betti_number][1:]) for f in features])
         print("ph_test" + str(ph_test.shape))
-        # ph_test = ph_test[:, idx_nonzero]
-        # print("ph_test" + str(ph_test.shape))
+        ph_test = ph_test[:, idx_nonzero]
+        print("ph_test" + str(ph_test.shape))
 
     print("Cross validated %s:" % scoring)
     clf = LogisticRegressionCV()

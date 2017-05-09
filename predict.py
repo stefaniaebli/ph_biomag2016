@@ -12,11 +12,14 @@ from persistent_homology import persistent_homology, persistent_homology_paralle
 
 def ph_dataset(covs, order_max=0, bins=10):
     ph, features = persistent_homology_parallel(covs, order_max=order_max, bins=bins)
-    ph_vectors = np.array([np.concatenate(f[0][1:]) for f in features])
-    if order_max > 0:
-        ph_vectors1 = np.array([np.concatenate(f[1][1:]) for f in features])
-        ph_vectors = np.hstack([ph_vectors, ph_vectors1])
+    ph_vectors = []
+    for order in range(order_max+1):
+        # ph_v = np.array([f[order][2] for f in features])
+        ph_v = np.array([np.concatenate(f[order][1:]) for f in features])
+        ph_vectors.append(ph_v)
+        
 
+    ph_vectors = np.hstack(ph_vectors)
     print("ph_vectors" + str(ph_vectors.shape))
     idx_nonzero = (ph_vectors.std(0) != 0)
     ph_vectors = ph_vectors[:, idx_nonzero]
@@ -25,8 +28,8 @@ def ph_dataset(covs, order_max=0, bins=10):
 
 
 if __name__ == '__main__':
-    print("Biomag2016: Competition 3")
-    print("Our attempt uses pyRiemann with a sklearn classifier.")
+    print("Biomag2016: Competition 3 dataset")
+    print("Our attempt uses persistent homology with a sklearn classifier.")
     subject = 1
     window_size = 150  # temporal window of interst, in timesteps
     t_offset = 15  # beginning of the time window of, from onset
@@ -36,7 +39,7 @@ if __name__ == '__main__':
     scoring = 'roc_auc'  # scoring metric
     label = 4  # the label of interest is 4, i.e. "happy"
     cv = 10  # folds for cross-validation
-    order_max = 1
+    order_max = 0
     bins = 10
     # betti_number = 0
     test_set = False
